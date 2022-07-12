@@ -131,6 +131,7 @@ def writeToWordlist(content, wordlist):
         f.write(filename + '\n')
 
 def displayResults(result, tokenResult, rawGitUrl, urlInfos):
+    if args.save:downloadGIT(rawGitUrl)
     possibleTokenString = '[!] POSSIBLE '+tokenResult[result]+' TOKEN FOUND (keyword used:'+githubQuery+')'
     print(colored(possibleTokenString,'green'))
     commitString = '[+] Commit '+urlInfos[2]+' : '+urlInfos[3]+' by '+urlInfos[4]
@@ -148,6 +149,19 @@ def displayResults(result, tokenResult, rawGitUrl, urlInfos):
     else:
         orgString = ''
     return possibleTokenString+'\n'+commitString+'\n'+urlString+'\n'+tokenString+'\n'+repoString+orgString
+
+
+def writeLocal(tokenResult, rawGitUrl):
+    writefile = open(results/githubQuery+'-results.txt', "a")
+    file1.writelines(f'{tokenResult[result]} : {tokenString.strip()} : {rawGitUrl}')
+    file1.close()
+
+def downloadGIT(rawGitUrl):
+    local_filename = url.split('/')[-1]
+    print(f'[+] downloading {local_filename}')
+    response = requests.get(rawGitUrl)
+    open(f'downloaded/{local_filename}', "wb").write(response.content)
+
 
 def parseResults(content):
     data = json.loads(content)
@@ -337,6 +351,7 @@ parser.add_argument('-s', '--slack', action='store_true', help='Enable slack not
 parser.add_argument('-tg', '--telegram', action='store_true', help='Enable telegram notifications', default=False)
 parser.add_argument('-m', '--monitor', action='store_true', help='Monitors your query by adding a cron job for every 30 mins',default=False)
 parser.add_argument('-w', '--wordlist', action='store', dest='wordlist', help='Create a wordlist that fills dynamically with discovered filenames on GitHub')
+parser.add_argument('-save', action='store_true')
 args = parser.parse_args()
 
 if not args.query or args.query == "":
@@ -349,6 +364,7 @@ githubQuery = args.query
 path_script=os.path.dirname(os.path.realpath(__file__))
 config.GITHUB_TOKENS_STATES = {}
 checkedOrgs = {}
+if args.save:print(colored('[!] SAVING FINDINGS', 'green'))
 
 # If wordlist, check if file is binary initialized for mmap 
 if(args.wordlist):
