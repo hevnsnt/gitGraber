@@ -131,7 +131,7 @@ def writeToWordlist(content, wordlist):
         f.write(filename + '\n')
 
 def displayResults(result, tokenResult, rawGitUrl, urlInfos):
-    if args.save:downloadGIT(rawGitUrl)
+    if args.save:downloadGIT(rawGitUrl, urlInfos[1])
     possibleTokenString = '[!] POSSIBLE '+tokenResult[result]+' TOKEN FOUND (keyword used:'+githubQuery+')'
     print(colored(possibleTokenString,'green'))
     commitString = '[+] Commit '+urlInfos[2]+' : '+urlInfos[3]+' by '+urlInfos[4]
@@ -149,6 +149,7 @@ def displayResults(result, tokenResult, rawGitUrl, urlInfos):
     else:
         orgString = ''
     return possibleTokenString+'\n'+commitString+'\n'+urlString+'\n'+tokenString+'\n'+repoString+orgString
+    writelocal(tokenResult, rawGitUrl)
 
 
 def writeLocal(tokenResult, rawGitUrl):
@@ -156,11 +157,11 @@ def writeLocal(tokenResult, rawGitUrl):
     file1.writelines(f'{tokenResult[result]} : {tokenString.strip()} : {rawGitUrl}')
     file1.close()
 
-def downloadGIT(rawGitUrl):
-    local_filename = url.split('/')[-1]
+def downloadGIT(rawGitUrl, urlInfo):
+    local_filename = rawGitUrl.split('/')[-1]
     print(f'[+] downloading {local_filename}')
     response = requests.get(rawGitUrl)
-    open(f'downloaded/{local_filename}', "wb").write(response.content)
+    open(f'downloaded/{urlInfo}-{local_filename}', "wb").write(response.content)
 
 
 def parseResults(content):
