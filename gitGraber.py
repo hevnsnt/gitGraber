@@ -131,7 +131,7 @@ def writeToWordlist(content, wordlist):
         f.write(filename + '\n')
 
 def displayResults(result, tokenResult, rawGitUrl, urlInfos):
-    writelocal(tokenResult, rawGitUrl)
+    writeLocal(tokenResult, rawGitUrl)
     if args.save:downloadGIT(rawGitUrl, urlInfos[1])
     possibleTokenString = '[!] POSSIBLE '+tokenResult[result]+' TOKEN FOUND (keyword used:'+githubQuery+')'
     print(colored(possibleTokenString,'green'))
