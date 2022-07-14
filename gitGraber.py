@@ -154,9 +154,9 @@ def displayResults(result, tokenResult, rawGitUrl, urlInfos):
 
 
 def writeLocal(tokenResult, rawGitUrl):
-    writefile = open(results/githubQuery+'-results.txt', "a")
-    file1.writelines(f'{tokenResult[result]} : {tokenString.strip()} : {rawGitUrl}')
-    file1.close()
+    writefile = open(f'results/{githubQuery}'+ '-results.txt', "a")
+    writefile.writelines(f'{tokenResult[result]} : {tokenString.strip()} : {rawGitUrl}')
+    writefile.close()
 
 def downloadGIT(rawGitUrl, urlInfo):
     local_filename = rawGitUrl.split('/')[-1]
