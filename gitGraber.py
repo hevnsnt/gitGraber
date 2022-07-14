@@ -131,8 +131,6 @@ def writeToWordlist(content, wordlist):
         f.write(filename + '\n')
 
 def displayResults(result, tokenResult, rawGitUrl, urlInfos):
-    writeLocal(tokenResult, rawGitUrl)
-    if args.save:downloadGIT(rawGitUrl, urlInfos[1])
     possibleTokenString = '[!] POSSIBLE '+tokenResult[result]+' TOKEN FOUND (keyword used:'+githubQuery+')'
     print(colored(possibleTokenString,'green'))
     commitString = '[+] Commit '+urlInfos[2]+' : '+urlInfos[3]+' by '+urlInfos[4]
@@ -150,6 +148,8 @@ def displayResults(result, tokenResult, rawGitUrl, urlInfos):
     else:
         orgString = ''
     return possibleTokenString+'\n'+commitString+'\n'+urlString+'\n'+tokenString+'\n'+repoString+orgString
+    writeLocal(tokenResult, rawGitUrl)
+    if args.save:downloadGIT(rawGitUrl, urlInfos[1])
     
 
 
