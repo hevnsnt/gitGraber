@@ -19,6 +19,8 @@ from termcolor import colored
 from urllib.parse import urlparse
 from multiprocessing.dummy import Pool
 from crontab import CronTab
+import signal
+import readchar
 
 
 def createEmptyBinaryFile(name):
@@ -141,6 +143,8 @@ def displayResults(result, tokenResult, rawGitUrl, urlInfos):
     print(tokenString.strip())
     repoString = '[+] Repository URL : '+urlInfos[1]
     print(repoString)
+    saveIT(tokenResult[result], result, rawGitUrl, githubQuery)
+    if args.save:downloadGIT(rawGitUrl, urlInfos[1])
     if urlInfos[5]:
         orgString = '[+] User Organizations : '+','.join(urlInfos[5])
         print(orgString)
@@ -148,21 +152,30 @@ def displayResults(result, tokenResult, rawGitUrl, urlInfos):
     else:
         orgString = ''
     return possibleTokenString+'\n'+commitString+'\n'+urlString+'\n'+tokenString+'\n'+repoString+orgString
-    writeLocal(tokenResult, rawGitUrl)
-    if args.save:downloadGIT(rawGitUrl, urlInfos[1])
+    
     
 
 
-def writeLocal(tokenResult, rawGitUrl):
-    writefile = open(f'results/{githubQuery}'+ '-results.txt', "a")
-    writefile.writelines(f'{tokenResult[result]} : {tokenString.strip()} : {rawGitUrl}')
-    writefile.close()
+def saveIT(tokenResult, token, rawGitUrl, githubQuery):
+    try:
+        savelocation = f'results/{githubQuery}-results.txt'
+        print(colored(f'[!] Writing to {savelocation}', 'green'))
+        writefile = open(savelocation, "a")
+        writefile.write(f'{githubQuery} : {tokenResult} : {token} : {rawGitUrl}')
+        writefile.close()
+    except Exception as e:
+        print('\t Exception '+str(e))
+        pass
 
 def downloadGIT(rawGitUrl, urlInfo):
-    local_filename = rawGitUrl.split('/')[-1]
-    print(f'[+] downloading {local_filename}')
-    response = requests.get(rawGitUrl)
-    open(f'downloaded/{str(urlInfo).replace("/","-")}-{local_filename}', "wb").write(response.content)
+    try:
+        local_filename = rawGitUrl.split('/')[-1]
+        print(f'[+] downloading {local_filename}')
+        response = requests.get(rawGitUrl)
+        open(f'downloaded/{str(urlInfo).replace("/","-")}-{local_filename}', "a").write(response.content)
+        close(f'downloaded/{str(urlInfo).replace("/","-")}-{local_filename}')
+    except:
+        pass
 
 
 def parseResults(content):
@@ -223,7 +236,7 @@ def parseResults(content):
         return contentRaw
 
     except Exception as e:
-        print('Exception '+str(e))
+        print('\t Exception '+str(e))
         pass
 
 # Transform the config github token list to a dict of key values
@@ -247,7 +260,7 @@ def getGithubToken(url):
 
     sleepTime = minTimeToken['reset'] - int(time.time()) + 1
     if sleepTime > 0:
-        print('[i] Sleeping ' + str(sleepTime) + ' sec')
+        print('\t[💤] Sleeping ' + str(sleepTime) + ' sec')
         time.sleep(sleepTime)
 
     return minTimeToken['token']
@@ -271,7 +284,7 @@ def doRequestGitHub(url, authd=True, verbose=False):
     nbMaxTry = config.GITHUB_MAX_RETRY
     while nbMaxTry > 0:
         if verbose:
-            print(colored('[i] Github query : ' + url, 'yellow'))
+            print(colored('\r\n[i] Github query : ' + url, 'yellow'))
         headers = {
             'Accept': 'application/vnd.github.v3.text-match+json'
         }
@@ -282,7 +295,7 @@ def doRequestGitHub(url, authd=True, verbose=False):
             response = requests.get(url, headers=headers)
             nbMaxTry = nbMaxTry - 1
             if verbose:
-                print('[i] Status code : ' + str(response.status_code))
+                print('\t[i] Status code : ' + str(response.status_code))
             if authd:
                 updateGithubToken(url, token, response)
             if response.status_code == 200:
@@ -293,28 +306,31 @@ def doRequestGitHub(url, authd=True, verbose=False):
                 responseJson = json.loads(response.text)
                 if "API rate limit exceeded" in responseJson['message']:
                     if verbose:
-                        print('[i] API rate limit exceeded for token ' + token)
+                        print('\t[i] API rate limit exceeded for token ' + token)
                 elif "abuse detection mechanism" in responseJson['message']:
                     if verbose:
-                        print('[i] Abuse detection reached for token ' + token)
+                        print('\t[i] Abuse detection reached for token ' + token)
                 else:
-                    print(colored('[!] Unexpected response','red'))
-                    print(colored(response.text,'red'))
+                    print('\t' + colored('⚠️   Unexpected response','red'))
+                    print('\t' + colored(responseJson["message"],'red'))
+                    print('\t' + colored(responseJson["documentation_url"],'red'))
+                    #print('\t' + colored(response.text,'red'))
             else:
-                print(colored('[!] Unexpected HTTP response ' + str(response.status_code),'red'))
-                print(colored(response.text,'red'))
+                print(colored('\t⚠️   Unexpected HTTP response ' + str(response.status_code),'red'))
+                print('\t[?]' + colored(response.text,'red'))
+                
 
         except UnicodeEncodeError as e:
-            print(colored("%s" % e.msg), 'red')
+            print('\t' + colored("%s" % e.msg), 'red')
             pass
         
         except requests.exceptions.ConnectionError as e:
-            print(colored('Connection to Github failed', 'red'))
+            print('\t' + colored('⚠️   Connection to Github failed', 'red'))
             pass
 
 def doSearchGithub(args,tokenMap, tokenCombos,keyword):
     url = config.GITHUB_API_URL + urllib.parse.quote(githubQuery +' '+keyword.strip()) +config.GITHUB_SEARCH_PARAMS
-    print(url)
+    print('\t' + url)
     response = doRequestGitHub(url, True, True)
     if response:
         content = parseResults(response.text)
@@ -342,6 +358,19 @@ def searchGithub(keywordsFile, args):
     pool.close()
     pool.join()
 
+def handler(signum, frame):
+    print("")
+    msg = "Ctrl-c was pressed. Do you really want to exit? y/n "
+    print(msg, end="", flush=True)
+    res = readchar.readchar()
+    if res == 'y':
+        print("Closing threads")
+        exit(1)
+    else:
+        print("", end="\r", flush=True)
+        print(" " * len(msg), end="", flush=True) # clear the printed line
+        print("    ", end="\r", flush=True)
+
 
 parser = argparse.ArgumentParser()
 argcomplete.autocomplete(parser)
@@ -366,7 +395,7 @@ githubQuery = args.query
 path_script=os.path.dirname(os.path.realpath(__file__))
 config.GITHUB_TOKENS_STATES = {}
 checkedOrgs = {}
-if args.save:print(colored('[!] SAVING FINDINGS', 'green'))
+if args.save:print(colored('[+] SAVING FINDINGS', 'green'))
 
 # If wordlist, check if file is binary initialized for mmap 
 if(args.wordlist):
@@ -380,5 +409,9 @@ else:
 # Init URL file 
 initFile(config.GITHUB_URL_FILE)
 
-# Send requests to Github API
-responses = searchGithub(keywordsFile, args)
+#handle ctrl+c
+signal.signal(signal.SIGINT, handler)
+
+if __name__ == "__main__":
+    # Send requests to Github API
+    responses = searchGithub(keywordsFile, args)
